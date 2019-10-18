@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 62ed9114ffee18979dd47b4431daaf4ba4ac43e3fb8aee783ddbc8a4cbf097a8
+-- hash: 3fc1e845ce8ed93788d6c64a9df190dd8561e28b4638778d759405a19c1a4b2e
 
 name:           fml
 version:        0.1.0.0
@@ -27,13 +27,16 @@ source-repository head
 
 library
   exposed-modules:
-      Lib
+      Parser
   other-modules:
       Paths_fml
   hs-source-dirs:
       src
   build-depends:
       base >=4.7 && <5
+    , parsec
+    , text
+    , unordered-containers
   default-language: Haskell2010
 
 executable fml-exe
@@ -46,6 +49,9 @@ executable fml-exe
   build-depends:
       base >=4.7 && <5
     , fml
+    , parsec
+    , text
+    , unordered-containers
   default-language: Haskell2010
 
 test-suite fml-test
@@ -59,4 +65,7 @@ test-suite fml-test
   build-depends:
       base >=4.7 && <5
     , fml
+    , parsec
+    , text
+    , unordered-containers
   default-language: Haskell2010
