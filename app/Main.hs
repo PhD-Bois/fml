@@ -2,7 +2,15 @@
 
 module Main where
 
-import Parser
+import Control.Monad (forever)
+import qualified Data.Text as Text
+import System.IO (hFlush, stdout)
+
+import Parser (parseUnit)
 
 main :: IO ()
-main = print $ parseUnit ""
+main = forever $ do
+    putStr "> "
+    hFlush stdout
+    code <- fmap Text.pack getLine
+    print $ parseUnit "test" code

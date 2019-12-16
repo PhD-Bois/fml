@@ -5,79 +5,90 @@ module Parser
     ) where
 
 import Control.Applicative (liftA2)
-import Control.Monad (void)
+import Control.Monad (void, when)
+import Data.Char (isAsciiLower, isAsciiUpper)
+import qualified Data.List.NonEmpty as NonEmpty
 
 import Data.HashSet (HashSet)
 import qualified Data.HashSet as Set
 
-import Data.Text (Text)
-import qualified Data.Text as T
+import qualified Data.Text as Text
 
 import Text.Parsec
 import Text.Parsec.Char
 import Text.Parsec.Text (Parser)
 
-data AST
-    = Identifier Text
-    | Typename Text
+import IR
+import Parser.Combinators
 
+parseUnit :: String -> Text.Text -> Either ParseError Unit
+parseUnit = parse (spaces *> unit <* eof)
 
-uppercase :: String
-uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
-lowercase :: String
-lowercase = "_abcdefghijklmnopqrstuvwxyz"
-
-numeric :: String
-numeric = "1234567890"
-
-alphanum :: String
-alphanum = lowercase ++ uppercase ++ numeric
-
-symbol :: String
-symbol = "!$%&/\\=?+*#<>-^"
-
-
--- maybe we should check if String or Text is faster for HashSet?
-keywords :: HashSet Text
-keywords = Set.fromList ["=", "and", "in", "let", "sig"]
-
-parseUnit :: Text -> Either ParseError [()]
-parseUnit text = parse (spaces *> unit) "test" text
-
-unit :: Parser [()]
-unit = many (definition <|> signature)
+unit :: Parser Unit
+unit = Unit <$> many (definition <|> signature)
 
 -- top level let bindings
-definition :: Parser ()
-definition = keyword "let"
+definition :: Parser TopLevel
+definition = do
+    keyword "let"
+    name <- identifier
+    args <- many pattern
+    keyword "="
+    expr <- expression
+    pure $ Definition name args expr
 
-signature :: Parser ()
-signature = keyword "sig"
+signature :: Parser TopLevel
+signature = do
+    keyword "sig"
+    name <- identifier
+    keyword ":"
+    -- TODO: type
+    pure $ Signature name undefined
 
-typename :: Parser AST
-typename = lexeme $ do
-    name <- T.pack <$> liftA2 (:) (oneOf lowercase) (many (oneOf alphanum))
-    if Set.member name keywords
-        then unexpected "keyword"
-        else Typename <$> pure name
 
-identifier :: Parser AST
-identifier = lexeme $ do
-    name <- T.pack <$> liftA2 (:) (oneOf lowercase) (many (oneOf alphanum))
-    if Set.member name keywords
-        then unexpected "keyword"
-        else Identifier <$> pure name
+pattern :: Parser Pattern
+pattern = Ref <$> identifier
 
-operator :: Parser AST
-operator = lexeme $ do
-    name <- T.pack <$> many1 (oneOf symbol)
-    if Set.member name keywords
-        then unexpected "keyword"
-        else Identifier <$> pure name
+expression :: Parser Expression
+expression = do
+    ls <- many1 single
+    pure $ case ls of
+        [x] -> x
+        (x : xs) -> Application x xs
+        _ -> error "unreachable"
+  where
+    single = lexeme (char '(') *> expression <* lexeme (char ')')
+        <|> fmap Var identifier
+        <|> lambda
+        <|> letExpression
+        <|> fmap LiteralExpr literal
 
-keyword :: String -> Parser ()
-keyword k = lexeme $ void (string k)  -- maybe add runtime assertion that k is indeed a keyword?
+lambda :: Parser Expression
+lambda = do
+    keyword "\\"
+    pats <- NonEmpty.fromList <$> many1 pattern
+    keyword "->"
+    expr <- expression
+    pure $ Lambda pats expr
 
-lexeme :: Parser a -> Parser a
-lexeme = (<* spaces)
+letExpression :: Parser Expression
+letExpression = do
+    keyword "let"
+    pat <- pattern
+    keyword "="
+    expr <- expression
+    bindings <- many letAnd
+    keyword "in"
+    inExpr <- expression
+    pure $ Let ((pat, expr) : bindings) inExpr
+  where
+    letAnd = do
+        keyword "and"
+        pat <- pattern
+        keyword "="
+        expr <- expression
+        pure (pat, expr)
+
+-- TODO
+literal :: Parser Literal
+literal = IntLiteral . read <$> many1 digit

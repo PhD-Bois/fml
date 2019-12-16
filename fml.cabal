@@ -4,13 +4,13 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 3fc1e845ce8ed93788d6c64a9df190dd8561e28b4638778d759405a19c1a4b2e
+-- hash: adda9f85e70161d1d87092a84508171365d3d350af8b2ea58415c77d8fba79f3
 
 name:           fml
 version:        0.1.0.0
-description:    Please see the README on GitHub at <https://github.com/githubuser/fml#readme>
-homepage:       https://github.com/githubuser/fml#readme
-bug-reports:    https://github.com/githubuser/fml/issues
+description:    Please see the README on GitHub at <https://github.com/PhD-Bois/fml#readme>
+homepage:       https://github.com/PhD-Bois/fml#readme
+bug-reports:    https://github.com/PhD-Bois/fml/issues
 author:         Author name here
 maintainer:     example@example.com
 copyright:      2019 Author name here
@@ -23,12 +23,14 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/githubuser/fml
+  location: https://github.com/PhD-Bois/fml
 
 library
   exposed-modules:
       Parser
   other-modules:
+      IR
+      Parser.Combinators
       Paths_fml
   hs-source-dirs:
       src
