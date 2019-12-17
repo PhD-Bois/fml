@@ -11,11 +11,13 @@ import Data.List.NonEmpty (NonEmpty)
 
 import qualified Data.Text as Text
 
+type Rec = Bool
+
 newtype Identifier = Identifier Text.Text deriving Show
 
 newtype Unit = Unit [TopLevel] deriving Show
 
-data TopLevel = Signature Identifier () {- TODO -} | Definition Identifier [Pattern] Expression deriving Show
+data TopLevel = Signature Identifier () {- TODO -} | Definition Rec Identifier [Pattern] Expression deriving Show
 
 data Type
 
@@ -27,7 +29,7 @@ data Pattern
 data Expression
     = Application Expression [Expression]
     | Var Identifier
-    | Let [(Pattern, Expression)] Expression
+    | Let (NonEmpty (Rec, Pattern, Expression)) Expression
     | If Expression Expression Expression
     | Lambda (NonEmpty Pattern) Expression
     | LiteralExpr Literal
