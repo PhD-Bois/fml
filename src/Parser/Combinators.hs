@@ -19,7 +19,7 @@ import IR
 
 -- maybe we should check if String or Text is faster for HashSet?
 keywords :: Set.HashSet String
-keywords = Set.fromList ["and", "in", "let", "sig", "=", ":", "\\"]
+keywords = Set.fromList ["and", "in", "let", "sig", "=", ":", "\\", "->"]
 
 symbol :: Parser Char
 symbol = oneOf "!$%&/\\=?+*#<>-^" <?> "symbol"
@@ -40,11 +40,13 @@ typename = lexeme $ do
     Identifier . Text.pack <$> pure name
 
 identifier :: Parser Identifier
-identifier = lexeme $ do
-    name <- liftA2 (:) lowercase (many alphanum)
-    if Set.member name keywords
-        then unexpected "keyword"
-        else Identifier . Text.pack <$> pure name
+identifier = lexeme (ident <?> "identifier")
+  where
+    ident = do
+        name <- liftA2 (:) lowercase (many alphanum)
+        if Set.member name keywords
+            then unexpected "keyword"
+            else Identifier . Text.pack <$> pure name
 
 operator :: Parser Identifier
 operator = lexeme $ do
@@ -57,7 +59,7 @@ operator = lexeme $ do
 keyword :: String -> Parser ()
 keyword key = if key `elem` keywords
     then lexeme (void (string key)) <?> "keyword '" ++ key ++ "'"
-    else error "Parser.Combinators.keyword: expected keyword"
+    else error $ "Parser.Combinators.keyword: expected keyword, got '" <> key <> "'"
 
 -- parses additional trailing whitespaces
 lexeme :: Parser a -> Parser a

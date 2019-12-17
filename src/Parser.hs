@@ -28,6 +28,7 @@ unit :: Parser Unit
 unit = Unit <$> many (definition <|> signature)
 
 -- top level let bindings
+-- TODO: add rec
 definition :: Parser TopLevel
 definition = do
     keyword "let"
@@ -58,10 +59,11 @@ expression = do
         _ -> error "unreachable"
   where
     single = lexeme (char '(') *> expression <* lexeme (char ')')
-        <|> fmap Var identifier
-        <|> lambda
-        <|> letExpression
+        <|> try lambda
         <|> fmap LiteralExpr literal
+        <|> try letExpression
+        <|> try (fmap Var identifier)
+        <?> "expression"
 
 lambda :: Parser Expression
 lambda = do
@@ -71,6 +73,7 @@ lambda = do
     expr <- expression
     pure $ Lambda pats expr
 
+-- TODO: add rec
 letExpression :: Parser Expression
 letExpression = do
     keyword "let"
