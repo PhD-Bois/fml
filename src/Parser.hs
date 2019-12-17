@@ -59,15 +59,15 @@ expression = do
         _ -> error "unreachable"
   where
     single = lexeme (char '(') *> expression <* lexeme (char ')')
-        <|> try lambda
+        <|> lambda
         <|> fmap LiteralExpr literal
-        <|> try letExpression
+        <|> letExpression
         <|> try (fmap Var identifier)
         <?> "expression"
 
 lambda :: Parser Expression
 lambda = do
-    keyword "\\"
+    try $ keyword "\\"
     pats <- NonEmpty.fromList <$> many1 pattern
     keyword "->"
     expr <- expression
@@ -76,7 +76,7 @@ lambda = do
 -- TODO: add rec
 letExpression :: Parser Expression
 letExpression = do
-    keyword "let"
+    try $ keyword "let"
     pat <- pattern
     keyword "="
     expr <- expression

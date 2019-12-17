@@ -18,8 +18,11 @@ import Text.Parsec.Text (Parser)
 import IR
 
 -- maybe we should check if String or Text is faster for HashSet?
-keywords :: Set.HashSet String
-keywords = Set.fromList ["and", "in", "let", "sig", "=", ":", "\\", "->"]
+keywordIdentifiers :: Set.HashSet String
+keywordIdentifiers = Set.fromList ["and", "in", "let", "sig"]
+
+keywordOperators :: Set.HashSet String
+keywordOperators = Set.fromList ["=", ":", "\\", "->"]
 
 symbol :: Parser Char
 symbol = oneOf "!$%&/\\=?+*#<>-^" <?> "symbol"
@@ -40,26 +43,27 @@ typename = lexeme $ do
     Identifier . Text.pack <$> pure name
 
 identifier :: Parser Identifier
-identifier = lexeme (ident <?> "identifier")
+identifier = lexeme ident <?> "identifier"
   where
     ident = do
         name <- liftA2 (:) lowercase (many alphanum)
-        if Set.member name keywords
+        if Set.member name keywordIdentifiers
             then unexpected "keyword"
             else Identifier . Text.pack <$> pure name
 
 operator :: Parser Identifier
 operator = lexeme $ do
     name <- many1 symbol
-    if Set.member name keywords
+    if Set.member name keywordOperators
         then unexpected "keyword"
         else Identifier . Text.pack <$> pure name
 
 -- TODO: add support for operators
 keyword :: String -> Parser ()
-keyword key = if key `elem` keywords
-    then lexeme (void (string key)) <?> "keyword '" ++ key ++ "'"
-    else error $ "Parser.Combinators.keyword: expected keyword, got '" <> key <> "'"
+keyword key
+    | key `elem` keywordIdentifiers = lexeme (string key *> notFollowedBy alphanum) <?> "keyword " ++ key
+    | key `elem` keywordOperators = lexeme (string key *> notFollowedBy symbol) <?> "keyword " ++ key
+    | otherwise =  error $ "Parser.Combinators.keyword: expected keyword, got '" ++ key ++ "'"
 
 -- parses additional trailing whitespaces
 lexeme :: Parser a -> Parser a
