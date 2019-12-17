@@ -62,6 +62,7 @@ expression = do
         <|> lambda
         <|> fmap LiteralExpr literal
         <|> letExpression
+        <|> ifExpression
         <|> try (fmap Var identifier)
         <?> "expression"
 
@@ -91,6 +92,16 @@ letExpression = do
         keyword "="
         expr <- expression
         pure (pat, expr)
+
+ifExpression :: Parser Expression
+ifExpression = do
+    try $ keyword "if"
+    cond <- expression
+    keyword "then"
+    ifTrue <- expression
+    keyword "else"
+    ifFalse <- expression
+    pure $ If cond ifTrue ifFalse
 
 -- TODO
 literal :: Parser Literal

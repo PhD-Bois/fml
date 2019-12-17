@@ -28,6 +28,7 @@ data Expression
     = Application Expression [Expression]
     | Var Identifier
     | Let [(Pattern, Expression)] Expression
+    | If Expression Expression Expression
     | Lambda (NonEmpty Pattern) Expression
     | LiteralExpr Literal
     deriving Show
