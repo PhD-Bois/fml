@@ -1,2 +1,8 @@
 .stack-work/
 stack.yaml.lock
+fml.cabal
+
+# IntelliJ
+.idea/
+*.iml
+out/

@@ -29,12 +29,16 @@ library:
   source-dirs: src
   exposed-modules:
   - Parser
+  ghc-options:
+  - -O
+  - -W
 
 executables:
   fml-exe:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
+    - -O
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
