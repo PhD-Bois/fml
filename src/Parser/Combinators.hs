@@ -7,7 +7,6 @@ module Parser.Combinators
   ) where
 
 import Control.Applicative (liftA2)
-import Control.Monad (void, when)
 import Data.Char (isAsciiLower, isAsciiUpper)
 
 import qualified Data.HashSet as Set
@@ -19,10 +18,10 @@ import IR
 
 -- maybe we should check if String or Text is faster for HashSet?
 keywordIdentifiers :: Set.HashSet String
-keywordIdentifiers = Set.fromList ["sig", "let", "rec", "and", "in", "if", "then", "else"]
+keywordIdentifiers = Set.fromList ["data", "sig", "let", "rec", "and", "in", "if", "then", "else"]
 
 keywordOperators :: Set.HashSet String
-keywordOperators = Set.fromList ["=", ":", "\\", "->"]
+keywordOperators = Set.fromList ["=", ":", "\\", "=>", "|"]
 
 symbol :: Parser Char
 symbol = oneOf "!$%&/\\=?+*#<>-^" <?> "symbol"

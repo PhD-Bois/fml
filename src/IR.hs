@@ -2,6 +2,7 @@ module IR
   ( Identifier(..)
   , Unit(..)
   , TopLevel(..)
+  , Type(..)
   , Pattern(..)
   , Expression(..)
   , Literal(..)
@@ -17,9 +18,16 @@ newtype Identifier = Identifier Text.Text deriving Show
 
 newtype Unit = Unit [TopLevel] deriving Show
 
-data TopLevel = Signature Identifier () {- TODO -} | Definition Rec Identifier [Pattern] Expression deriving Show
+data TopLevel
+    = Signature Identifier Type
+    | Definition Rec Identifier [Pattern] Expression
+    | DataDefinition Type [(Type, Maybe Type)]  -- (constructor, signature)
+    deriving Show
 
 data Type
+    = TypeApp Type [Type]
+    | Typename Identifier
+    deriving Show
 
 data Pattern
     = Ref Identifier

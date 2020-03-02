@@ -27,7 +27,24 @@ parseUnit :: String -> Text.Text -> Either ParseError Unit
 parseUnit = parse (spaces *> unit <* eof)
 
 unit :: Parser Unit
-unit = Unit <$> many (definition <|> signature)
+unit = Unit <$> many (dataDefinition <|> definition <|> signature)
+
+dataDefinition :: Parser TopLevel
+dataDefinition = do
+    keyword "data"
+    ty <- typeExpression
+    constructors <- many single
+    pure $ DataDefinition ty constructors
+  where
+    single = keyword "|" *> liftA2 (,) typeExpression (optionMaybe $ keyword ":" *> typeSignature)
+
+typeExpression :: Parser Type
+typeExpression = do
+    ls <- many1 (try (fmap Typename typename) <?> "type")
+    pure $ case ls of
+        [x] -> x
+        (x : xs) -> TypeApp x xs
+        _ -> error "unreachable"
 
 -- top level let bindings
 -- TODO: add rec
@@ -46,9 +63,22 @@ signature = do
     keyword "sig"
     name <- identifier
     keyword ":"
-    -- TODO: type
-    pure $ Signature name undefined
+    ty <- typeSignature
+    pure $ Signature name ty
 
+
+-- type expression, used in
+typeSignature :: Parser Type
+typeSignature = do
+    ls <- many1 single
+    pure $ case ls of
+        [x] -> x
+        (x : xs) -> TypeApp x xs
+        _ -> error "unreachable"
+  where
+    single = lexeme (char '(') *> typeSignature <* lexeme (char ')')
+        <|> try (fmap Typename typename)
+        <?> "type"
 
 pattern :: Parser Pattern
 pattern = Ref <$> identifier
@@ -73,7 +103,7 @@ lambda :: Parser Expression
 lambda = do
     try $ keyword "\\"
     pats <- NonEmpty.fromList <$> many1 pattern
-    keyword "->"
+    keyword "=>"
     expr <- expression
     pure $ Lambda pats expr
 
