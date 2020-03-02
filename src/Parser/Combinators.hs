@@ -18,7 +18,7 @@ import IR
 
 -- maybe we should check if String or Text is faster for HashSet?
 keywordIdentifiers :: Set.HashSet String
-keywordIdentifiers = Set.fromList ["data", "sig", "let", "rec", "and", "in", "if", "then", "else"]
+keywordIdentifiers = Set.fromList ["data", "type", "sig", "let", "rec", "and", "in", "if", "then", "else"]
 
 keywordOperators :: Set.HashSet String
 keywordOperators = Set.fromList ["=", ":", "\\", "=>", "|"]

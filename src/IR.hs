@@ -22,6 +22,7 @@ data TopLevel
     = Signature Identifier Type
     | Definition Rec Identifier [Pattern] Expression
     | DataDefinition Type [(Type, Maybe Type)]  -- (constructor, signature)
+    | TypeAlias Type Type
     deriving Show
 
 data Type

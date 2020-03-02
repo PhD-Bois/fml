@@ -27,7 +27,7 @@ parseUnit :: String -> Text.Text -> Either ParseError Unit
 parseUnit = parse (spaces *> unit <* eof)
 
 unit :: Parser Unit
-unit = Unit <$> many (dataDefinition <|> definition <|> signature)
+unit = Unit <$> many (dataDefinition <|> typeAlias <|> definition <|> signature)
 
 dataDefinition :: Parser TopLevel
 dataDefinition = do
@@ -37,6 +37,14 @@ dataDefinition = do
     pure $ DataDefinition ty constructors
   where
     single = keyword "|" *> liftA2 (,) typeExpression (optionMaybe $ keyword ":" *> typeSignature)
+
+typeAlias :: Parser TopLevel
+typeAlias = do
+    keyword "type"
+    alias <- typeExpression
+    keyword "="
+    ty <- typeSignature
+    pure $ TypeAlias alias ty
 
 typeExpression :: Parser Type
 typeExpression = do
