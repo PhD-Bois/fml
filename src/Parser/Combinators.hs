@@ -24,7 +24,7 @@ keywordOperators :: Set.HashSet String
 keywordOperators = Set.fromList ["=", ":", "\\", "=>", "|"]
 
 symbol :: Parser Char
-symbol = oneOf "!$%&/\\=?+*#<>-^" <?> "symbol"
+symbol = oneOf "!$%&/\\=?+*#<>-^:|" <?> "symbol"
 
 lowercase :: Parser Char
 lowercase = satisfy (liftA2 (||) isAsciiLower (== '_')) <?> "lowercase letter or '_'"

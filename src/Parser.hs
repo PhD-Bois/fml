@@ -48,11 +48,29 @@ typeAlias = do
 
 typeExpression :: Parser Type
 typeExpression = do
-    ls <- many1 (try (fmap Typename typename) <?> "type")
+    ls <- many1 single
     pure $ case ls of
         [x] -> x
         (x : xs) -> TypeApp x xs
         _ -> error "unreachable"
+  where
+    single = recordType
+        <|> try (fmap Typename typename)
+        <?> "type"
+
+recordType :: Parser Type
+recordType = do
+    void $ lexeme (char '{')
+    fields <- field `sepEndBy` lexeme (char ',')
+    row <- optionMaybe $ keyword "|" *> identifier
+    void $ lexeme (char '}')
+    pure $ Record fields row
+  where
+    field = do
+        name <- identifier
+        keyword ":"
+        ty <- typeSignature
+        pure $ (name, ty)
 
 -- top level let bindings
 -- TODO: add rec
@@ -85,6 +103,7 @@ typeSignature = do
         _ -> error "unreachable"
   where
     single = lexeme (char '(') *> typeSignature <* lexeme (char ')')
+        <|> recordType
         <|> try (fmap Typename typename)
         <?> "type"
 

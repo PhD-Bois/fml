@@ -11,6 +11,7 @@ module IR
 import Data.List.NonEmpty (NonEmpty)
 
 import qualified Data.Text as Text
+import Data.Void (Void)
 
 type Rec = Bool
 
@@ -21,13 +22,18 @@ newtype Unit = Unit [TopLevel] deriving Show
 data TopLevel
     = Signature Identifier Type
     | Definition Rec Identifier [Pattern] Expression
-    | DataDefinition Type [(Type, Maybe Type)]  -- (constructor, signature)
+    | DataDefinition
+        Type
+        [(Type, Maybe Type)]  -- (constructor, signature)
     | TypeAlias Type Type
     deriving Show
 
 data Type
     = TypeApp Type [Type]
     | Typename Identifier
+    | Record
+        [(Identifier, Type)]  -- fields
+        (Maybe Identifier)  -- row variable
     deriving Show
 
 data Pattern
@@ -49,4 +55,5 @@ data Literal
     | FloatLiteral Double
     | CharLiteral Char
     | StringLiteral String
+    | RecordLiteral Void  -- TODO
     deriving Show
