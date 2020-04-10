@@ -5,14 +5,9 @@ module Parser
     ) where
 
 import Control.Applicative (liftA2)
-import Control.Monad (void, when)
-import Data.Char (isAsciiLower, isAsciiUpper)
 import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.List.NonEmpty as NonEmpty
 import Data.Maybe (isJust)
-
-import Data.HashSet (HashSet)
-import qualified Data.HashSet as Set
 
 import qualified Data.Text as Text
 
@@ -60,17 +55,17 @@ typeExpression = do
 
 recordType :: Parser Type
 recordType = do
-    void $ lexeme (char '{')
-    fields <- field `sepEndBy` lexeme (char ',')
+    punct "{"
+    fields <- field `sepEndBy` punct ","
     row <- optionMaybe $ keyword "|" *> identifier
-    void $ lexeme (char '}')
-    pure $ Record fields row
+    punct "}"
+    pure $ RecordType fields row
   where
     field = do
         name <- identifier
         keyword ":"
         ty <- typeSignature
-        pure $ (name, ty)
+        pure (name, ty)
 
 -- top level let bindings
 -- TODO: add rec
@@ -102,7 +97,7 @@ typeSignature = do
         (x : xs) -> TypeApp x xs
         _ -> error "unreachable"
   where
-    single = lexeme (char '(') *> typeSignature <* lexeme (char ')')
+    single = punct "(" *> typeSignature <* punct ")"
         <|> recordType
         <|> try (fmap Typename typename)
         <?> "type"
@@ -118,8 +113,9 @@ expression = do
         (x : xs) -> Application x xs
         _ -> error "unreachable"
   where
-    single = lexeme (char '(') *> expression <* lexeme (char ')')
+    single = punct "(" *> expression <* punct ")"
         <|> lambda
+        <|> record
         <|> fmap LiteralExpr literal
         <|> letExpression
         <|> ifExpression
@@ -133,6 +129,20 @@ lambda = do
     keyword "=>"
     expr <- expression
     pure $ Lambda pats expr
+
+record :: Parser Expression
+record = do
+    punct "{"
+    fields <- field `sepEndBy` punct ","
+    row <- optionMaybe $ keyword "|" *> expression
+    punct "}"
+    pure $ RecordLiteral fields row
+  where
+    field = do
+        name <- identifier
+        keyword "="
+        expr <- expression
+        pure (name, expr)
 
 -- TODO: add rec
 letExpression :: Parser Expression
@@ -168,3 +178,5 @@ ifExpression = do
 -- TODO
 literal :: Parser Literal
 literal = IntLiteral . read <$> many1 digit
+    <|> CharLiteral <$> (punct "'" *> noneOf "'" <* punct "'")  -- TODO: escape chars
+    <|> StringLiteral <$> (punct "\"" *> many (noneOf "\"") <* punct "\"")  -- TODO: escape chars

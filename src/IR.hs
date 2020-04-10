@@ -31,7 +31,7 @@ data TopLevel
 data Type
     = TypeApp Type [Type]
     | Typename Identifier
-    | Record
+    | RecordType
         [(Identifier, Type)]  -- fields
         (Maybe Identifier)  -- row variable
     deriving Show
@@ -47,6 +47,9 @@ data Expression
     | Let (NonEmpty (Rec, Pattern, Expression)) Expression
     | If Expression Expression Expression
     | Lambda (NonEmpty Pattern) Expression
+    | RecordLiteral
+        [(Identifier, Expression)]  -- fields
+        (Maybe Expression)  -- row expression
     | LiteralExpr Literal
     deriving Show
 
@@ -55,5 +58,4 @@ data Literal
     | FloatLiteral Double
     | CharLiteral Char
     | StringLiteral String
-    | RecordLiteral Void  -- TODO
     deriving Show

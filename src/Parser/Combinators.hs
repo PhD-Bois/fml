@@ -1,12 +1,13 @@
 module Parser.Combinators
-  ( keyword
-  , typename
-  , identifier
-  , operator
-  , lexeme
-  ) where
+    ( keyword
+    , typename
+    , identifier
+    , operator
+    , punct
+    ) where
 
 import Control.Applicative (liftA2)
+import Control.Monad (void)
 import Data.Char (isAsciiLower, isAsciiUpper)
 
 import qualified Data.HashSet as Set
@@ -67,3 +68,6 @@ keyword key
 -- parses additional trailing whitespaces
 lexeme :: Parser a -> Parser a
 lexeme = (<* spaces)
+
+punct :: String -> Parser ()
+punct = void . lexeme . string

@@ -31,7 +31,7 @@ library:
   - Parser
   ghc-options:
   - -O
-  - -W
+  - -Wall
 
 executables:
   fml-exe:
