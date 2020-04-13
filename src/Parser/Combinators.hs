@@ -4,6 +4,7 @@ module Parser.Combinators
     , identifier
     , operator
     , punct
+    , lexeme
     ) where
 
 import Control.Applicative (liftA2)

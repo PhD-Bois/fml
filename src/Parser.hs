@@ -176,6 +176,6 @@ ifExpression = do
 
 -- TODO
 literal :: Parser Literal
-literal = IntLiteral . read <$> many1 digit
+literal = lexeme $ IntLiteral . read <$> many1 digit
     <|> CharLiteral <$> (punct "'" *> noneOf "'" <* punct "'")  -- TODO: escape chars
     <|> StringLiteral <$> (punct "\"" *> many (noneOf "\"") <* punct "\"")  -- TODO: escape chars
