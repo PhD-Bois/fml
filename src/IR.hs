@@ -1,17 +1,17 @@
 module IR
-  ( Identifier(..)
-  , Unit(..)
-  , TopLevel(..)
-  , Type(..)
-  , Pattern(..)
-  , Expression(..)
-  , Literal(..)
-  ) where
+    ( Rec
+    , Identifier(..)
+    , Unit(..)
+    , TopLevel(..)
+    , Type(..)
+    , Pattern(..)
+    , Expression(..)
+    , Literal(..)
+    ) where
 
 import Data.List.NonEmpty (NonEmpty)
 
 import qualified Data.Text as Text
-import Data.Void (Void)
 
 type Rec = Bool
 
@@ -21,7 +21,7 @@ newtype Unit = Unit [TopLevel] deriving Show
 
 data TopLevel
     = Signature Identifier Type
-    | Definition Rec Identifier [Pattern] Expression
+    | Definition (NonEmpty (Rec, NonEmpty Pattern, Expression))
     | DataDefinition
         Type
         [(Type, Maybe Type)]  -- (constructor, signature)
@@ -44,7 +44,7 @@ data Pattern
 data Expression
     = Application Expression [Expression]
     | Var Identifier
-    | Let (NonEmpty (Rec, Pattern, Expression)) Expression
+    | Let (NonEmpty (Rec, NonEmpty Pattern, Expression)) Expression
     | If Expression Expression Expression
     | Lambda (NonEmpty Pattern) Expression
     | RecordLiteral

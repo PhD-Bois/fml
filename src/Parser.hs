@@ -22,7 +22,7 @@ parseUnit :: String -> Text.Text -> Either ParseError Unit
 parseUnit = parse (spaces *> unit <* eof)
 
 unit :: Parser Unit
-unit = Unit <$> many (dataDefinition <|> typeAlias <|> definition <|> signature)
+unit = Unit <$> many (dataDefinition <|> typeAlias <|> letDefinition <|> signature)
 
 dataDefinition :: Parser TopLevel
 dataDefinition = do
@@ -40,6 +40,26 @@ typeAlias = do
     keyword "="
     ty <- typeSignature
     pure $ TypeAlias alias ty
+
+-- top level let bindings
+letDefinition :: Parser TopLevel
+letDefinition = do
+    keyword "let"
+    rec <- isJust <$> (optionMaybe $ try (keyword "rec"))
+    args <- many1 pattern
+    keyword "="
+    expr <- expression
+    andBindings <- many letAnd
+    pure $ Definition ((rec, NonEmpty.fromList args, expr) :| andBindings)
+
+signature :: Parser TopLevel
+signature = do
+    keyword "sig"
+    name <- identifier
+    keyword ":"
+    ty <- typeSignature
+    pure $ Signature name ty
+
 
 typeExpression :: Parser Type
 typeExpression = do
@@ -66,27 +86,6 @@ recordType = do
         keyword ":"
         ty <- typeSignature
         pure (name, ty)
-
--- top level let bindings
--- TODO: add rec
-definition :: Parser TopLevel
-definition = do
-    keyword "let"
-    rec <- isJust <$> (optionMaybe $ try (keyword "rec"))
-    name <- identifier
-    args <- many pattern
-    keyword "="
-    expr <- expression
-    pure $ Definition rec name args expr
-
-signature :: Parser TopLevel
-signature = do
-    keyword "sig"
-    name <- identifier
-    keyword ":"
-    ty <- typeSignature
-    pure $ Signature name ty
-
 
 -- type expression, used in
 typeSignature :: Parser Type
@@ -144,26 +143,26 @@ record = do
         expr <- expression
         pure (name, expr)
 
--- TODO: add rec
 letExpression :: Parser Expression
 letExpression = do
     try $ keyword "let"
     rec <- isJust <$> (optionMaybe $ try (keyword "rec"))
-    pat <- pattern
+    args <- many1 pattern
     keyword "="
     expr <- expression
-    bindings <- many letAnd
+    andBindings <- many letAnd
     keyword "in"
     inExpr <- expression
-    pure $ Let ((rec, pat, expr) :| bindings) inExpr
-  where
-    letAnd = do
-        keyword "and"
-        rec <- isJust <$> (optionMaybe $ try (keyword "rec"))
-        pat <- pattern
-        keyword "="
-        expr <- expression
-        pure (rec, pat, expr)
+    pure $ Let ((rec, NonEmpty.fromList args, expr) :| andBindings) inExpr
+
+letAnd :: Parser (Rec, NonEmpty Pattern, Expression)
+letAnd = do
+    keyword "and"
+    rec <- isJust <$> (optionMaybe $ try (keyword "rec"))
+    args <- many1 pattern
+    keyword "="
+    expr <- expression
+    pure (rec, NonEmpty.fromList args, expr)
 
 ifExpression :: Parser Expression
 ifExpression = do
