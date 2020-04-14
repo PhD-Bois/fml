@@ -45,6 +45,8 @@ data Expression
     = Application Expression [Expression]
     | Var Identifier
     | Let (NonEmpty (Rec, NonEmpty Pattern, Expression)) Expression
+    | Match Expression (NonEmpty (Pattern, Expression))
+    | LambdaMatch (NonEmpty (Pattern, Expression))
     | If Expression Expression Expression
     | Lambda (NonEmpty Pattern) Expression
     | RecordLiteral

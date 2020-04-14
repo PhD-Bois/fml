@@ -101,6 +101,7 @@ typeSignature = do
         <|> try (fmap Typename typename)
         <?> "type"
 
+-- TODO
 pattern :: Parser Pattern
 pattern = Ref <$> identifier
 
@@ -117,6 +118,7 @@ expression = do
         <|> record
         <|> fmap LiteralExpr literal
         <|> letExpression
+        <|> matchExpression
         <|> ifExpression
         <|> try (fmap Var identifier)
         <?> "expression"
@@ -163,6 +165,21 @@ letAnd = do
     keyword "="
     expr <- expression
     pure (rec, NonEmpty.fromList args, expr)
+
+matchExpression :: Parser Expression
+matchExpression = do
+    keyword "match"
+    lookAhead (keyword "|") *> (LambdaMatch <$> arms) <|> do
+        expr <- expression
+        keyword "with"
+        Match expr <$> arms
+  where
+    arms = fmap NonEmpty.fromList . many1 $ do
+        keyword "|"
+        pat <- pattern
+        keyword "=>"
+        expr <- expression
+        pure (pat, expr)
 
 ifExpression :: Parser Expression
 ifExpression = do

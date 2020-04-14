@@ -20,7 +20,7 @@ import IR
 
 -- maybe we should check if String or Text is faster for HashSet?
 keywordIdentifiers :: Set.HashSet String
-keywordIdentifiers = Set.fromList ["data", "type", "sig", "let", "rec", "and", "in", "if", "then", "else"]
+keywordIdentifiers = Set.fromList ["data", "type", "sig", "let", "rec", "and", "in", "match", "with", "if", "then", "else"]
 
 keywordOperators :: Set.HashSet String
 keywordOperators = Set.fromList ["=", ":", "\\", "=>", "|"]
@@ -62,8 +62,8 @@ operator = lexeme $ do
 -- TODO: add support for operators
 keyword :: String -> Parser ()
 keyword key
-    | key `elem` keywordIdentifiers = lexeme (string key *> notFollowedBy alphanum) <?> "keyword " ++ key
-    | key `elem` keywordOperators = lexeme (string key *> notFollowedBy symbol) <?> "keyword " ++ key
+    | key `elem` keywordIdentifiers = lexeme (string key *> notFollowedBy alphanum) <?> "keyword `" ++ key ++ "`"
+    | key `elem` keywordOperators = lexeme (string key *> notFollowedBy symbol) <?> "keyword `" ++ key ++ "`"
     | otherwise =  error $ "Parser.Combinators.keyword: expected keyword, got '" ++ key ++ "'"
 
 -- parses additional trailing whitespaces
