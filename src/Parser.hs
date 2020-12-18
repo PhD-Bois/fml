@@ -5,33 +5,109 @@ module Parser
     ) where
 
 import Control.Applicative (liftA2)
+import Data.Char (isAsciiLower, isAsciiUpper)
 import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.List.NonEmpty as NonEmpty
 import Data.Maybe (isJust)
+import Data.Void (Void)
 
+import qualified Data.HashSet as Set
 import qualified Data.Text as Text
-
-import Text.Parsec
-import Text.Parsec.Char
-import Text.Parsec.Text (Parser)
+import Text.Megaparsec hiding (ParseError)
+import Text.Megaparsec.Char
 
 import IR
-import Parser.Combinators
+
+-- combinators
+
+type Parser = Parsec Void Text.Text
+type ParseError = ParseErrorBundle Text.Text Void
+
+-- maybe we should check if String or Text is faster for HashSet?
+keywordIdentifiers :: Set.HashSet Text.Text
+keywordIdentifiers = Set.fromList ["data", "type", "sig", "let", "rec", "and", "in", "match", "with", "if", "then", "else"]
+
+keywordOperators :: Set.HashSet Text.Text
+keywordOperators = Set.fromList ["=", ":", "\\", "=>", "|"]
+
+-- ! # $ % & * + - / : < = > ? \ ^ | ~
+isSymbol :: Char -> Bool
+isSymbol c = c == '!'
+    || c >= '#' && c <= '&'
+    || c == '*'
+    || c == '+'
+    || c == '-'
+    || c == '/'
+    || c == ':'
+    || c >= '<' && c <= '?'
+    || c == '\\'
+    || c == '^'
+    || c == '|'
+    || c == '~'
+
+isLowercase :: Char -> Bool
+isLowercase c = isAsciiLower c || c == '_'
+
+isUppercase :: Char -> Bool
+isUppercase = isAsciiUpper
+
+isDigit :: Char -> Bool
+isDigit c = c >= '0' && c <= '9'
+
+isAlphanum :: Char -> Bool
+isAlphanum c = isLowercase c || isUppercase c || isDigit c
+
+-- TODO
+typename :: Parser Identifier
+typename = lexeme $ do
+    name <- liftA2 Text.cons (satisfy isUppercase) (takeWhileP Nothing isAlphanum)
+    pure $ Identifier name
+
+identifier :: Parser Identifier
+identifier = lexeme ident <?> "identifier"
+  where
+    ident = do
+        name <- liftA2 Text.cons (satisfy isLowercase) (takeWhileP Nothing isAlphanum)
+        if Set.member name keywordIdentifiers
+            then fail "unexpected keyword"
+            else pure $ Identifier name
+
+operator :: Parser Identifier
+operator = lexeme $ do
+    name <- takeWhile1P Nothing isSymbol
+    if Set.member name keywordOperators
+        then fail "unexpected keyword"
+        else pure $ Identifier name
+
+-- TODO: add support for operators
+keyword :: Text.Text -> Parser ()
+keyword key
+    | key `elem` keywordIdentifiers = lexeme (string key *> notFollowedBy (satisfy isAlphanum)) <?> "keyword `" ++ Text.unpack key ++ "`"
+    | key `elem` keywordOperators = lexeme (string key *> notFollowedBy (satisfy isSymbol)) <?> "keyword `" ++ Text.unpack key ++ "`"
+    | otherwise =  error $ "Parser.Combinators.keyword: expected keyword, got '" ++ Text.unpack key ++ "'"
+
+-- parses additional trailing whitespaces
+lexeme :: Parser a -> Parser a
+lexeme = (<* space)
+
+punct :: Text.Text -> Parser ()
+punct = (*> pure ()) . lexeme . string
+
 
 parseUnit :: String -> Text.Text -> Either ParseError Unit
-parseUnit = parse (spaces *> unit <* eof)
+parseUnit = parse (space *> unit <* eof)
 
 unit :: Parser Unit
-unit = Unit <$> many (dataDefinition <|> typeAlias <|> letDefinition <|> signature)
+unit = Unit <$> many (dataDefinition <|> typeAlias <|> letDefinition <|> signature')
 
 dataDefinition :: Parser TopLevel
 dataDefinition = do
     keyword "data"
     ty <- typeExpression
-    constructors <- many single
+    constructors <- many singleData
     pure $ DataDefinition ty constructors
   where
-    single = keyword "|" *> liftA2 (,) typeExpression (optionMaybe $ keyword ":" *> typeSignature)
+    singleData = keyword "|" *> liftA2 (,) typeExpression (optional $ keyword ":" *> typeSignature)
 
 typeAlias :: Parser TopLevel
 typeAlias = do
@@ -45,31 +121,30 @@ typeAlias = do
 letDefinition :: Parser TopLevel
 letDefinition = do
     keyword "let"
-    rec <- isJust <$> (optionMaybe $ try (keyword "rec"))
-    args <- many1 pattern
+    isRec <- isJust <$> optional (try (keyword "rec"))
+    args <- some pattern'
     keyword "="
     expr <- expression
     andBindings <- many letAnd
-    pure $ Definition ((rec, NonEmpty.fromList args, expr) :| andBindings)
+    pure $ Definition ((isRec, NonEmpty.fromList args, expr) :| andBindings)
 
-signature :: Parser TopLevel
-signature = do
+signature' :: Parser TopLevel
+signature' = do
     keyword "sig"
     name <- identifier
     keyword ":"
     ty <- typeSignature
     pure $ Signature name ty
 
-
 typeExpression :: Parser Type
 typeExpression = do
-    ls <- many1 single
+    ls <- some singleType
     pure $ case ls of
         [x] -> x
         (x : xs) -> TypeApp x xs
         _ -> error "unreachable"
   where
-    single = recordType
+    singleType = recordType
         <|> try (fmap Typename typename)
         <?> "type"
 
@@ -77,7 +152,7 @@ recordType :: Parser Type
 recordType = do
     punct "{"
     fields <- field `sepEndBy` punct ","
-    row <- optionMaybe $ keyword "|" *> identifier
+    row <- optional $ keyword "|" *> identifier
     punct "}"
     pure $ RecordType fields row
   where
@@ -90,30 +165,30 @@ recordType = do
 -- type expression, used in
 typeSignature :: Parser Type
 typeSignature = do
-    ls <- many1 single
+    ls <- some singleType
     pure $ case ls of
         [x] -> x
         (x : xs) -> TypeApp x xs
         _ -> error "unreachable"
   where
-    single = punct "(" *> typeSignature <* punct ")"
+    singleType = punct "(" *> typeSignature <* punct ")"
         <|> recordType
         <|> try (fmap Typename typename)
         <?> "type"
 
 -- TODO
-pattern :: Parser Pattern
-pattern = Ref <$> identifier
+pattern' :: Parser Pattern
+pattern' = Ref <$> identifier
 
 expression :: Parser Expression
 expression = do
-    ls <- many1 single
+    ls <- some singleExpr
     pure $ case ls of
         [x] -> x
         (x : xs) -> Application x xs
         _ -> error "unreachable"
   where
-    single = punct "(" *> expression <* punct ")"
+    singleExpr = punct "(" *> expression <* punct ")"
         <|> lambda
         <|> record
         <|> fmap LiteralExpr literal
@@ -126,7 +201,7 @@ expression = do
 lambda :: Parser Expression
 lambda = do
     try $ keyword "\\"
-    pats <- NonEmpty.fromList <$> many1 pattern
+    pats <- NonEmpty.fromList <$> some pattern'
     keyword "=>"
     expr <- expression
     pure $ Lambda pats expr
@@ -135,7 +210,7 @@ record :: Parser Expression
 record = do
     punct "{"
     fields <- field `sepEndBy` punct ","
-    row <- optionMaybe $ keyword "|" *> expression
+    row <- optional $ keyword "|" *> expression
     punct "}"
     pure $ RecordLiteral fields row
   where
@@ -148,23 +223,23 @@ record = do
 letExpression :: Parser Expression
 letExpression = do
     try $ keyword "let"
-    rec <- isJust <$> (optionMaybe $ try (keyword "rec"))
-    args <- many1 pattern
+    isRec <- isJust <$> (optional $ try (keyword "rec"))
+    args <- some pattern'
     keyword "="
     expr <- expression
     andBindings <- many letAnd
     keyword "in"
     inExpr <- expression
-    pure $ Let ((rec, NonEmpty.fromList args, expr) :| andBindings) inExpr
+    pure $ Let ((isRec, NonEmpty.fromList args, expr) :| andBindings) inExpr
 
 letAnd :: Parser (Rec, NonEmpty Pattern, Expression)
 letAnd = do
     keyword "and"
-    rec <- isJust <$> (optionMaybe $ try (keyword "rec"))
-    args <- many1 pattern
+    isRec <- isJust <$> optional (try (keyword "rec"))
+    args <- some pattern'
     keyword "="
     expr <- expression
-    pure (rec, NonEmpty.fromList args, expr)
+    pure (isRec, NonEmpty.fromList args, expr)
 
 matchExpression :: Parser Expression
 matchExpression = do
@@ -174,9 +249,9 @@ matchExpression = do
         keyword "with"
         Match expr <$> arms
   where
-    arms = fmap NonEmpty.fromList . many1 $ do
+    arms = fmap NonEmpty.fromList . some $ do
         keyword "|"
-        pat <- pattern
+        pat <- pattern'
         keyword "=>"
         expr <- expression
         pure (pat, expr)
@@ -193,6 +268,6 @@ ifExpression = do
 
 -- TODO
 literal :: Parser Literal
-literal = lexeme $ IntLiteral . read <$> many1 digit
-    <|> CharLiteral <$> (punct "'" *> noneOf "'" <* punct "'")  -- TODO: escape chars
-    <|> StringLiteral <$> (punct "\"" *> many (noneOf "\"") <* punct "\"")  -- TODO: escape chars
+literal = lexeme $ IntLiteral . read <$> some (satisfy isDigit)  -- TODO: use takeWhile1P
+    <|> CharLiteral <$> (punct "'" *> noneOf ['"'] <* punct "'")  -- TODO: escape chars
+    <|> StringLiteral <$> (punct "\"" *> many (noneOf ['"']) <* punct "\"")  -- TODO: escape chars
